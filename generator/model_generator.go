@@ -21,12 +21,18 @@ func Generate(c *cli.Context) error {
 			tableName := table["Tables_in_"+c.String("d")]
 			columns := db.GetDataBySql("desc " + tableName)
 			generateModel(tableName, columns, c.String("dir"))
+			generateDao(tableName, c.String("dir"))
 		}
 	} else {
 		columns := db.GetDataBySql("desc " + c.String("t"))
 		generateModel(c.String("t"), columns, c.String("dir"))
+		generateDao(c.String("t"), c.String("dir"))
 	}
 	return nil
+}
+
+func generateDao(tableName string, dir string) {
+	println("gen dao " + tableName)
 }
 
 func generateModel(tableName string, columns []map[string]string, dir string) {
@@ -64,7 +70,7 @@ func getCol(st *jen.Statement, t string) {
 	case "decimal":
 		st.Float32()
 	case "date", "time", "timestamp", "year", "datetime":
-		st.Qual("time", "Time")
+		st.Qual("*time", "Time")
 	default:
 		st.String()
 	}
