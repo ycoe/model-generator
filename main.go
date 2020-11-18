@@ -35,6 +35,15 @@ func main() {
 			Usage: "path which models will be stored",
 			Value: "models",
 		},
+		cli.StringFlag{
+			Name:  "daodir, dd",
+			Usage: "path which dao will be stored",
+			Value: "dao",
+		},
+		cli.StringFlag{
+			Name:  "appId",
+			Usage: "appId",
+		},
 	}
 	app.Action = generator.Generate
 	app.Run(os.Args)
