@@ -6,6 +6,10 @@ import (
 	"os"
 )
 
+func main3() {
+	generator.GenBaseDao("finance", "dao", nil)
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Usage = "generate model for jinzhu/gorm"
