@@ -41,8 +41,8 @@ func main() {
 			Value: "dao",
 		},
 		cli.StringFlag{
-			Name:  "appId",
-			Usage: "appId",
+			Name:  "appid",
+			Usage: "your appId, eg: helloworld",
 		},
 	}
 	app.Action = generator.Generate

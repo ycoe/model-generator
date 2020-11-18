@@ -12,14 +12,18 @@ Install
 ===
 
 ```
-$ go get github.com/ycoe/model-generator
+## $ go get github.com/bigkucha/model-generator ## 使用本源的不能使用此方法安装
+
+git clone git@github.com:ycoe/model-generator.git
+cd model-generator
+go get .
 ```
 
 Usage
 ===
 
 ```
-$ $GOPATH/bin/model-generator -u=root -p=(pwd of your mysql) -d=database -t=table -dir=
+$ $GOPATH/bin/model-generator -u=root -p=(pwd of your mysql) -d=database -t=table -dir=./model -dd=./dao -appid=myapp
 ```
 
 Flags
@@ -56,7 +60,19 @@ Flags
   <tr>
     <td>dir</td>
     <td>optional,default 'model' of current directory</td>
-    <td>models where to be store</td>
+    <td>model files where to be store</td>
+  </tr>
+  
+  <tr>
+    <td>daodir, dd</td>
+    <td>required</td>
+    <td>dao files where to be store</td>
+  </tr>
+  
+  <tr>
+    <td>appid</td>
+    <td>required</td>
+    <td>your appId</td>
   </tr>
 </table>
 
