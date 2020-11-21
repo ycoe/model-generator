@@ -7,7 +7,7 @@ import (
 )
 
 func main3() {
-	generator.GenBaseDao("finance", "dao", nil)
+	generator.GenBaseDao("finance", "dao", nil, "")
 }
 
 func main() {
@@ -47,6 +47,11 @@ func main() {
 		cli.StringFlag{
 			Name:  "appid",
 			Usage: "your appId, eg: helloworld",
+		},
+		cli.StringFlag{
+			Name:  "tablePrefix, tp",
+			Usage: "table prefix",
+			Value: "",
 		},
 	}
 	app.Action = generator.Generate

@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-func GenBaseDao(appId, packageName string, tableNames []string) {
+func GenBaseDao(appId, packageName string, tableNames []string, prefix string) {
 	f := jen.NewFile(packageName)
 	genDaoStruct(f)
 	genVarDefaultDao(f)
@@ -36,8 +36,9 @@ func genDisconnect(f *jen.File) {
 	f.Func().Params(
 		jen.Id("d *Dao"),
 	).Id("Disconnect").Params().Id("error").Block(
+		jen.Id("db, _").Op(":=").Id("d").Dot("client").Dot("DB").Call(),
 		jen.Return(
-			jen.Id("d").Dot("client").Dot("DB").Call().Dot("Close").Call(),
+			jen.Id("db").Dot("Close").Call(),
 		),
 	)
 }
@@ -51,8 +52,9 @@ func genPing(f *jen.File) {
 	f.Func().Params(
 		jen.Id("d *Dao"),
 	).Id("Ping").Params().Id("error").Block(
+		jen.Id("db, _").Op(":=").Id("d").Dot("client").Dot("DB").Call(),
 		jen.Return(
-			jen.Id("d").Dot("client").Dot("DB").Call().Dot("Ping").Call(),
+			jen.Id("db").Dot("Ping").Call(),
 		),
 	)
 }
@@ -89,8 +91,8 @@ func genNewDao(f *jen.File, tableNames []string) {
 		codes = append(codes, jen.Line().Id("&").Qual("finance/model", entityName).Block())
 	}
 
-	f.Func().Id("newDao").Params(
-		jen.Id("c *conf.Config"),
+	f.Line().Func().Id("newDao").Params(
+		jen.Id("c *conf.DbConfig"),
 	).Params(
 		jen.Id("*Dao"),
 		jen.Id("error"),
@@ -98,8 +100,19 @@ func genNewDao(f *jen.File, tableNames []string) {
 		jen.Var().Id("d Dao").Line().Var().Id("err error"),
 		jen.If(
 			jen.Id("d.client, err").Op("=").Id("gorm").Dot("Open").Call(
-				jen.Id("c.DB.DriverName"),
-				jen.Id("c.DB.URL"),
+				jen.Line().Qual("gorm.io/driver/mysql", "Open").Call(
+					jen.Id("c.DB.URL"),
+				),
+				jen.Id("&gorm").Dot("Config").Values(
+					jen.Dict{
+						jen.Line().Id("NamingStrategy"): 	jen.Qual("gorm.io/gorm/schema", "NamingStrategy").Values(
+							jen.Dict{
+								jen.Id("TablePrefix"): 	jen.Id("c.DB.TablePrefix"),
+								jen.Id("SingularTable"): 	jen.True(),
+							},
+						),
+					},
+				),
 			),
 			jen.Id("err").Op("!=").Nil(),
 		).Block(
@@ -108,30 +121,35 @@ func genNewDao(f *jen.File, tableNames []string) {
 				jen.Id("err"),
 			),
 		).Line(),
-		jen.Id("d").Dot("client").Dot("SingularTable").Call(
-			jen.True(),
-		).Comment("表名采用单数形式"),
-		jen.Id("d").Dot("client").Dot("DB").Call().Dot("SetMaxOpenConns").Call(
-			jen.Id("100"),
-		).Comment("SetMaxOpenConns用于设置最大打开的连接数"),
-		jen.Id("d").Dot("client").Dot("DB").Call().Dot("SetMaxIdleConns").Call(
-			jen.Id("10"),
-		).Comment("SetMaxIdleConns用于设置闲置的连接数"),
-		jen.Comment("d.client.LogMode(true)").Line(),
 
-		jen.If(
-			jen.Id("err").Op("=").Id("d").Dot("client").Dot("Set").Call(
-				jen.Lit("gorm:table_options"),
-				jen.Lit("ENGINE=InnoDB"),
-			).Dot("AutoMigrate").Call(codes...).Dot("Error"),
-			jen.Id("err").Op("!=").Nil(),
-		).Block(
-			jen.Id("_").Op("=").Id("d").Dot("client").Dot("Close").Call(),
-			jen.Return(
-				jen.Nil(),
-				jen.Id("err"),
-			),
+		jen.Id("sqlDB, _").Op(":=").Id("d").Dot("client").Dot("DB").Call().Line(),
+
+		jen.Id("sqlDB").Dot("SetMaxIdleConns").Call(
+			jen.Id("c").Dot("DB").Dot("MaxIdleConns"),
+		).Comment("SetMaxIdleConns 设置空闲连接池中连接的最大数量"),
+		jen.Id("sqlDB").Dot("SetMaxOpenConns").Call(
+			jen.Id("c").Dot("DB").Dot("MaxOpenConns"),
+		).Comment("SetMaxOpenConns 设置打开数据库连接的最大数量"),
+		jen.Id("sqlDB").Dot("SetConnMaxLifetime").Call(
+			jen.Qual("time", "Hour"),
+		).Comment("SetConnMaxLifetime 设置了连接可复用的最大时间"),
+
+		jen.Id("d").Dot("client").Dot("Set").Call(
+			jen.Lit("gorm:table_options"),
+			jen.Lit("ENGINE=InnoDB"),
 		),
+		//jen.If(
+		//	jen.Id("err").Op("=").Id("d").Dot("client").Dot("Set").Call(
+		//		jen.Lit("gorm:table_options"),
+		//		jen.Lit("ENGINE=InnoDB"),
+		//	).Dot("AutoMigrate").Call(codes...),
+		//	jen.Id("err").Op("!=").Nil(),
+		//).Block(
+		//	jen.Return(
+		//		jen.Nil(),
+		//		jen.Id("err"),
+		//	),
+		//),
 		jen.Return(
 			jen.Id("&d"),
 			jen.Nil(),
@@ -147,7 +165,7 @@ func Init(c *conf.Config) (err error) {
 */
 func genInit(appId string, f *jen.File) {
 	f.Line().Func().Id("Init").Params(
-		jen.Id("c *").Qual(appId+"/conf", "Config"),
+		jen.Id("c *").Qual(appId+"/conf", "DbConfig"),
 	).Params(
 		jen.Id("err").Id("error"),
 	).Block(
@@ -178,6 +196,6 @@ func genVarDefaultDao(f *jen.File) *jen.Statement {
 
 func genDaoStruct(f *jen.File) *jen.Statement {
 	return f.Type().Id("Dao").Struct(
-		jen.Id("client").Id("*").Qual("github.com/jinzhu/gorm", "DB"),
+		jen.Id("client").Id("*").Qual("gorm.io/gorm", "DB"),
 	)
 }

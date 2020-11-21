@@ -1,7 +1,7 @@
 model-generator
 ===
 
-this is a model generator for [jinzhu/gorm](https://github.com/jinzhu/gorm)
+this is a model generator for [jinzhu/gorm](https://gorm.io/gorm)
 
 Demo
 ===
@@ -73,6 +73,12 @@ Flags
     <td>appid</td>
     <td>required</td>
     <td>your appId</td>
+  </tr>
+  
+  <tr>
+    <td>tablePrefix, tp</td>
+    <td></td>
+    <td>table prefix</td>
   </tr>
 </table>
 

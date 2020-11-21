@@ -14,26 +14,41 @@ func Generate(c *cli.Context) error {
 	appId := c.String("appid")
 	daoDir := c.String("daodir")
 	tableName := c.String("t")
+	tablePrefix := c.String("tablePrefix")
 	if tableName == "ALL" {
 		tableNames := make([]string, 0)
 		tables := db.GetDataBySql("show tables")
 		for _, table := range tables {
-			tableName := table["Tables_in_"+c.String("d")]
+			orgTableName := table["Tables_in_"+c.String("d")]
+			tableName := getTableName(orgTableName, tablePrefix)
 			tableNames = append(tableNames, tableName)
-			columns := db.GetDataBySql("desc " + tableName)
+			columns := db.GetDataBySql("desc " + orgTableName)
 			GenerateModel(tableName, columns, c.String("dir"))
-			GenerateDao(appId, tableName, daoDir)
+			GenerateDao(orgTableName, appId, tableName, daoDir)
 		}
 
 		//生成dao.go
 		index := strings.LastIndex(daoDir, "/")
-		daoPackage := daoDir[index+1 : len(daoDir)]
-		GenBaseDao(appId, daoPackage, tableNames)
+		daoPackage := daoDir[index+1:]
+		GenBaseDao(appId, daoPackage, tableNames, tablePrefix)
 	} else {
+		orgTableName := tableName
 		columns := db.GetDataBySql("desc " + tableName)
+		tableName := getTableName(tableName, tablePrefix)
 		GenerateModel(tableName, columns, c.String("dir"))
-		GenerateDao(appId, tableName, daoDir)
+		GenerateDao(orgTableName, appId, tableName, daoDir)
 	}
 	return nil
 }
 
+func getTableName(orgTableName, tablePrefix string) string {
+	if len(tablePrefix) == 0 {
+		return orgTableName
+	}
+	index := strings.LastIndex(orgTableName, tablePrefix)
+	if index == 0 {
+		return orgTableName[len(tablePrefix):]
+	}
+	//fmt.Printf("当前表名%s 不是以前缀%s 开头！\n", orgTableName, tablePrefix)
+	return orgTableName
+}
